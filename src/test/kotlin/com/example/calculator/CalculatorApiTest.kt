@@ -1,10 +1,7 @@
 package com.example.calculator
 
-import jakarta.servlet.ServletException
 import org.hamcrest.Matchers.hasItems
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -40,13 +37,27 @@ class CalculatorApiTest {
     }
 
     @Test
-    fun `division by zero throws an arithmetic error`() {
-        for (zero in listOf("0", "-0.0")) {
-            val exception = assertThrows<ServletException> {
-                mvc.perform(get("/calculate").param("a", "1").param("b", zero).param("operation", "/"))
+    fun `division by zero returns a clear bad request error`() {
+        for (zero in listOf("0", "+0", "-0", "0.0", "-0.0", ".0", "00.00")) {
+            for (dividend in listOf("1", "0")) {
+                mvc.perform(get("/calculate").param("a", dividend).param("b", zero).param("operation", "/"))
+                    .andExpect(status().isBadRequest)
+                    .andExpect(content().contentTypeCompatibleWith("application/json"))
+                    .andExpect(content().json("""{"error":"Делить на ноль нельзя"}"""))
             }
-            assertInstanceOf(ArithmeticException::class.java, exception.cause)
         }
+    }
+
+    @Test
+    fun `zero remains valid for other operations and as a dividend`() {
+        for (operation in listOf("+", "-", "*")) {
+            mvc.perform(get("/calculate").param("a", "1").param("b", "0").param("operation", operation))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.result").value(if (operation == "*") 0 else 1))
+        }
+        mvc.perform(get("/calculate").param("a", "0").param("b", "2").param("operation", "/"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.result").value(0))
     }
 
     @Test
