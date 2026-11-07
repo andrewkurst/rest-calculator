@@ -13,7 +13,10 @@ class CalculatorService {
             "+" -> first + second
             "-" -> first - second
             "*" -> first * second
-            "/" -> first.divide(second, MathContext.DECIMAL128)
+            "/" -> {
+                require(second.signum() != 0) { "Делить на ноль нельзя" }
+                first.divide(second, MathContext.DECIMAL128)
+            }
             else -> throw IllegalArgumentException("operation must be +, -, *, /")
         }
     }
